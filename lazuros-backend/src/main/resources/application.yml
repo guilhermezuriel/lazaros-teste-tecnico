@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: lazuros-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/lazuros
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  modulith:
+    detection-strategy: direct-sub-packages
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.guilhermezuriel.lazurosbackend: DEBUG
+    org.springframework.modulith: INFO
