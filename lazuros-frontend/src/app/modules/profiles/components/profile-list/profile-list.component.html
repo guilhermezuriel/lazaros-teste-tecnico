@@ -1,0 +1,46 @@
+<div class="container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Perfis</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="actions-bar">
+        <button mat-raised-button color="primary" (click)="openCreateDialog()">
+          <mat-icon>add</mat-icon>
+          Novo Perfil
+        </button>
+      </div>
+
+      <div *ngIf="isLoading" class="loading">
+        <mat-spinner></mat-spinner>
+      </div>
+
+      <div *ngIf="!isLoading && profiles.length === 0" class="empty-state">
+        <mat-icon>folder_open</mat-icon>
+        <p>Nenhum perfil cadastrado</p>
+      </div>
+
+      <table mat-table [dataSource]="profiles" *ngIf="!isLoading && profiles.length > 0" class="mat-elevation-z2">
+        <ng-container matColumnDef="descricao">
+          <th mat-header-cell *matHeaderCellDef>Descrição</th>
+          <td mat-cell *matCellDef="let profile">{{ profile.descricao }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef class="actions-column">Ações</th>
+          <td mat-cell *matCellDef="let profile" class="actions-column">
+            <button mat-icon-button color="primary" (click)="openEditDialog(profile)" title="Editar">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="deleteProfile(profile)" title="Excluir">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+</div>

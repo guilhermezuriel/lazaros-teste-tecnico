@@ -1,0 +1,24 @@
+<h2 mat-dialog-title>{{ isEdit ? 'Editar Perfil' : 'Novo Perfil' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Descrição</mat-label>
+      <input matInput formControlName="descricao" placeholder="Digite a descrição do perfil" />
+      <mat-error *ngIf="form.get('descricao')?.invalid">
+        {{ getErrorMessage('descricao') }}
+      </mat-error>
+      <mat-hint>Mínimo de 5 caracteres</mat-hint>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()" [disabled]="isSubmitting">
+    Cancelar
+  </button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="form.invalid || isSubmitting">
+    <mat-spinner *ngIf="isSubmitting" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
+    {{ isEdit ? 'Atualizar' : 'Criar' }}
+  </button>
+</mat-dialog-actions>

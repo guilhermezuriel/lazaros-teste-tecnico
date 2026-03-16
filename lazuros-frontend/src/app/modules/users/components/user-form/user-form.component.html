@@ -1,0 +1,40 @@
+<h2 mat-dialog-title>{{ isEdit ? 'Editar Usuário' : 'Novo Usuário' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nome</mat-label>
+      <input matInput formControlName="nome" placeholder="Digite o nome completo do usuário" />
+      <mat-error *ngIf="form.get('nome')?.invalid">
+        {{ getErrorMessage('nome') }}
+      </mat-error>
+      <mat-hint>Mínimo de 10 caracteres</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Perfis</mat-label>
+      <mat-select formControlName="perfis" multiple>
+        <mat-option *ngIf="isLoadingProfiles" disabled>
+          Carregando perfis...
+        </mat-option>
+        <mat-option *ngFor="let profile of availableProfiles" [value]="profile.id">
+          {{ profile.descricao }}
+        </mat-option>
+      </mat-select>
+      <mat-error *ngIf="form.get('perfis')?.invalid">
+        {{ getErrorMessage('perfis') }}
+      </mat-error>
+      <mat-hint>Selecione um ou mais perfis</mat-hint>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()" [disabled]="isSubmitting">
+    Cancelar
+  </button>
+  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="form.invalid || isSubmitting">
+    <mat-spinner *ngIf="isSubmitting" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
+    {{ isEdit ? 'Atualizar' : 'Criar' }}
+  </button>
+</mat-dialog-actions>
