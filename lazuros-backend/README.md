@@ -1,4 +1,4 @@
-# Lazuros Backend
+# Lazaros Backend
 
 Sistema backend desenvolvido com Spring Boot implementando uma arquitetura modular seguindo princípios de Clean Architecture e Domain-Driven Design (DDD), utilizando Spring Modulith para garantir limites claros entre módulos.
 
