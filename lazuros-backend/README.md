@@ -9,8 +9,13 @@ Sistema backend desenvolvido com Spring Boot implementando uma arquitetura modul
 - [Estrutura de Módulos](#estrutura-de-módulos)
 - [Estrutura de Pacotes](#estrutura-de-pacotes)
 - [Endpoints da API](#endpoints-da-api)
+- [Casos de Uso](#casos-de-uso)
+- [Modelo de Dados](#modelo-de-dados)
+- [Testes](#testes)
 - [Configuração e Execução](#configuração-e-execução)
+- [Executar com Docker](#executar-com-docker)
 - [Decisões Arquiteturais](#decisões-arquiteturais)
+- [Possíveis Evoluções](#possíveis-evoluções)
 
 ## Tecnologias Utilizadas
 
@@ -19,13 +24,15 @@ Sistema backend desenvolvido com Spring Boot implementando uma arquitetura modul
 | Framework | Spring Boot | 4.0.3 |
 | Arquitetura Modular | Spring Modulith | 1.3.4 |
 | Web | Spring Web MVC | - |
-| Banco de Dados (Prod) | PostgreSQL | Latest |
+| Monitoramento | Spring Boot Actuator | - |
+| Banco de Dados (Prod) | PostgreSQL | 15 |
 | Banco de Dados (Test) | H2 Database | Latest |
 | ORM | Spring Data JDBC | - |
 | Build Tool | Maven | - |
 | Java | OpenJDK | 17 |
 | Testes | JUnit 5 + AssertJ + Mockito | - |
 | Utilitários | Lombok | Latest |
+| Containerização | Docker + Docker Compose | Latest |
 
 ## Arquitetura do Sistema
 
@@ -603,10 +610,14 @@ src/test/java/
 
 ### Pré-requisitos
 
+#### Desenvolvimento Local
 - **Java 17** ou superior
 - **Maven 3.8+**
-- **PostgreSQL 12+** (para produção)
-- **Docker** (opcional, para rodar PostgreSQL)
+- **PostgreSQL 12+**
+
+#### Com Docker (Recomendado)
+- **Docker** 20.10+
+- **Docker Compose** 2.0+
 
 ### Configuração do Banco de Dados
 
@@ -683,7 +694,7 @@ java -jar target/lazuros-backend-0.0.1-SNAPSHOT.jar
 ### Verificar Funcionamento
 
 ```bash
-# Health check (Spring Boot Actuator, se configurado)
+# Health check (Spring Boot Actuator)
 curl http://localhost:8080/actuator/health
 
 # Listar perfis
@@ -692,6 +703,241 @@ curl http://localhost:8080/api/profiles
 # Listar usuários
 curl http://localhost:8080/api/users
 ```
+
+### Dados Iniciais
+
+Ao iniciar, a aplicação automaticamente:
+1. Cria o schema do banco de dados (`schema.sql`)
+2. Insere 5 perfis padrão
+3. Insere 5 usuários de exemplo
+
+---
+
+## Executar com Docker
+
+### Opção 1: Docker Compose (Recomendado)
+
+A maneira mais fácil de rodar a aplicação é usando Docker Compose, que sobe tanto o PostgreSQL quanto a aplicação:
+
+```bash
+# Subir todos os serviços (build + run)
+docker-compose up --build
+
+# Ou em background
+docker-compose up -d --build
+
+# Ver logs
+docker-compose logs -f app
+
+# Parar os serviços
+docker-compose down
+
+# Parar e remover volumes (limpa o banco)
+docker-compose down -v
+```
+
+A aplicação estará disponível em: `http://localhost:8080`
+
+### Opção 2: Apenas Build da Imagem
+
+Se você quiser apenas construir a imagem Docker da aplicação:
+
+```bash
+# Build da imagem
+docker build -t lazuros-backend:latest .
+
+# Executar (assumindo PostgreSQL já rodando)
+docker run -d \
+  --name lazuros-backend \
+  -p 8080:8080 \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/lazuros \
+  -e SPRING_DATASOURCE_USERNAME=postgres \
+  -e SPRING_DATASOURCE_PASSWORD=postgres \
+  lazuros-backend:latest
+```
+
+### Opção 3: Somente o Banco de Dados
+
+Se você quiser rodar apenas o PostgreSQL com Docker e a aplicação localmente:
+
+```bash
+# Subir apenas o PostgreSQL
+docker-compose up -d postgres
+
+# Executar a aplicação localmente
+./mvnw spring-boot:run
+```
+
+### Arquitetura do Docker
+
+#### Dockerfile Multi-Stage
+
+O Dockerfile usa uma estratégia **multi-stage build** para otimizar o tamanho da imagem:
+
+**Stage 1 - Build**: Usa `eclipse-temurin:17-jdk-alpine` para compilar o projeto
+- Copia dependências e código fonte
+- Executa o build Maven
+- Gera o JAR da aplicação
+
+**Stage 2 - Runtime**: Usa `eclipse-temurin:17-jre-alpine` (apenas JRE)
+- Copia apenas o JAR compilado
+- Imagem final muito menor (~200MB vs ~500MB)
+- Usuário não-root para segurança
+- Healthcheck configurado
+
+**Benefícios**:
+- Imagem de produção leve
+- Sem ferramentas de build na imagem final
+- Mais segura (menos superfície de ataque)
+- Startup mais rápido
+
+#### Docker Compose
+
+O arquivo `docker-compose.yml` define:
+
+**Serviço PostgreSQL**:
+- Imagem: `postgres:15-alpine`
+- Porta: 5432
+- Volume persistente para dados
+- Healthcheck configurado
+
+**Serviço App**:
+- Build da aplicação Spring Boot
+- Porta: 8080
+- Depende do PostgreSQL (aguarda healthcheck)
+- Variáveis de ambiente configuradas
+- Healthcheck via actuator
+
+**Network**:
+- Bridge network isolada (`lazuros-network`)
+- Comunicação interna entre containers
+- Resolução de nomes automática
+
+**Volumes**:
+- `postgres_data`: Persiste dados do PostgreSQL
+- Dados sobrevivem ao `docker-compose down`
+
+### Variáveis de Ambiente
+
+Você pode customizar a configuração através de variáveis de ambiente:
+
+```bash
+# Criar arquivo .env na raiz do projeto
+cat > .env << EOF
+POSTGRES_DB=lazuros
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=minhaSenhaSegura123
+SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/lazuros
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=minhaSenhaSegura123
+EOF
+
+# Docker Compose vai usar automaticamente
+docker-compose up -d
+```
+
+### Healthchecks
+
+Ambos os containers têm healthchecks configurados:
+
+**PostgreSQL**:
+```bash
+pg_isready -U postgres -d lazuros
+```
+
+**Aplicação**:
+```bash
+curl -f http://localhost:8080/actuator/health
+```
+
+Você pode verificar o status:
+```bash
+docker-compose ps
+```
+
+### Logs e Debugging
+
+```bash
+# Ver logs de todos os serviços
+docker-compose logs -f
+
+# Logs apenas da aplicação
+docker-compose logs -f app
+
+# Logs apenas do PostgreSQL
+docker-compose logs -f postgres
+
+# Últimas 100 linhas
+docker-compose logs --tail=100 app
+
+# Executar comandos dentro do container
+docker-compose exec app sh
+docker-compose exec postgres psql -U postgres -d lazuros
+```
+
+### Comandos Úteis
+
+```bash
+# Rebuild apenas da aplicação
+docker-compose up -d --build app
+
+# Reiniciar apenas a aplicação
+docker-compose restart app
+
+# Ver recursos utilizados
+docker stats
+
+# Inspecionar network
+docker network inspect lazuros-backend_lazuros-network
+
+# Inspecionar volume
+docker volume inspect lazuros-backend_postgres_data
+
+# Backup do banco
+docker-compose exec postgres pg_dump -U postgres lazuros > backup.sql
+
+# Restore do banco
+docker-compose exec -T postgres psql -U postgres lazuros < backup.sql
+```
+
+### Troubleshooting
+
+**Problema: Aplicação não conecta no PostgreSQL**
+```bash
+# Verificar se o PostgreSQL está healthy
+docker-compose ps
+
+# Ver logs do PostgreSQL
+docker-compose logs postgres
+
+# Verificar se a aplicação está aguardando o banco
+docker-compose logs app | grep -i "waiting"
+```
+
+**Problema: Porta 8080 já está em uso**
+```bash
+# Alterar a porta no docker-compose.yml
+ports:
+  - "8081:8080"  # Usa 8081 no host
+```
+
+**Problema: Banco de dados com dados antigos**
+```bash
+# Remover volumes e recriar
+docker-compose down -v
+docker-compose up -d --build
+```
+
+**Problema: Build falha por falta de memória**
+```bash
+# Aumentar memória do Docker (Docker Desktop)
+# Settings > Resources > Memory > Aumentar para 4GB+
+
+# Ou usar build local e depois copiar JAR
+./mvnw clean package -DskipTests
+docker-compose up -d
+```
+
 ---
 
 ## Contato e Contribuição

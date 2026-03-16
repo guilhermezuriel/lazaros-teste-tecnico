@@ -3,7 +3,7 @@ spring:
     name: lazuros-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/lazuros
+    url: jdbc:postgresql://localhost:5433/lazuros
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -18,6 +18,15 @@ spring:
 
 server:
   port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
 
 logging:
   level:
